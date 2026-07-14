@@ -19,6 +19,9 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsRequestHandlerWrapper(_storage).handler,
     );
+    print("================================");
+print("API URL: ${AppConfig.apiBaseUrl}");
+print("================================");
   }
 
   static final ApiClient instance = ApiClient._internal();

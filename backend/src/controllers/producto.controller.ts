@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as ProductoService from "../services/producto.service";
+import { emitirActualizacionProducto } from "../services/notification.service";
 
 export const listarProductos = async (req: Request, res: Response) => {
   try {
@@ -41,6 +42,13 @@ export const crearProducto = async (req: Request, res: Response) => {
       usuarioId: req.usuario!.id,
     });
 
+    // ✅ EMIT: Notificar a todas las aplicaciones
+    await emitirActualizacionProducto(
+      "PRODUCTO_CREADO",
+      producto,
+      req.usuario!.id
+    );
+
     res.status(201).json(producto);
   } catch {
     res.status(500).json({ error: "Error al crear producto" });
@@ -57,9 +65,20 @@ export const actualizarProducto = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "El stock no puede ser negativo" });
 
     const producto = await ProductoService.actualizarProducto(Number(req.params.id), {
-      nombre, precio, stock, descripcion, imagenUrl,
+      nombre,
+      precio,
+      stock,
+      descripcion,
+      imagenUrl,
       categoriaId: categoriaId ? Number(categoriaId) : undefined,
     });
+
+    // ✅ EMIT: Notificar a todas las aplicaciones
+    await emitirActualizacionProducto(
+      "PRODUCTO_ACTUALIZADO",
+      producto,
+      req.usuario!.id
+    );
 
     res.json(producto);
   } catch {
@@ -69,7 +88,18 @@ export const actualizarProducto = async (req: Request, res: Response) => {
 
 export const eliminarProducto = async (req: Request, res: Response) => {
   try {
-    await ProductoService.eliminarProducto(Number(req.params.id));
+    const productoId = Number(req.params.id);
+    const producto = await ProductoService.obtenerProductoPorId(productoId);
+
+    await ProductoService.eliminarProducto(productoId);
+
+    // ✅ EMIT: Notificar a todas las aplicaciones
+    await emitirActualizacionProducto(
+      "PRODUCTO_ELIMINADO",
+      { id: productoId, ...producto },
+      req.usuario!.id
+    );
+
     res.json({ message: "Producto eliminado correctamente" });
   } catch {
     res.status(500).json({ error: "Error al eliminar producto" });

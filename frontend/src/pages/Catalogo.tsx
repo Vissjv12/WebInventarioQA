@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Spinner from "../components/Spinner";
 import api from "../services/api";
+import { useSyncProductos } from "../hooks/useSync";
+import SyncStatus from "../components/SyncStatus";
 
 interface Producto {
   id: number;
@@ -33,6 +35,9 @@ export default function Catalogo() {
         .finally(() => setCargando(false));
     }, []);
 
+  // ✅ Sincronizar productos en tiempo real
+  useSyncProductos(productos, setProductos);
+
   const productosFiltrados = productos.filter(p =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
@@ -49,7 +54,10 @@ const productosPaginados = productosFiltrados.slice(
       <Navbar />
       <div className="contenido">
         <div className="encabezado">
-          <h1 className="encabezado-titulo">Catálogo de Productos</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "20px", flex: 1 }}>
+            <h1 className="encabezado-titulo">Catálogo de Productos</h1>
+            <SyncStatus />
+          </div>
           <div className="encabezado-acciones">
             <input
               type="text"

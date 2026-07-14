@@ -6,6 +6,8 @@ import api from "../services/api";
 import Spinner from "../components/Spinner";
 import Toast from "../components/Toast";
 import ModalConfirm from "../components/ModalConfirm";
+import { useSyncProductos, useSyncCategorias } from "../hooks/useSync";
+import SyncStatus from "../components/SyncStatus";
 
 interface Producto {
   id: number;
@@ -55,6 +57,12 @@ export default function Dashboard() {
     }
     cargarDatos();
   }, []);
+
+  // ✅ Sincronizar productos en tiempo real
+  useSyncProductos(productos, setProductos);
+
+  // ✅ Sincronizar categorías en tiempo real
+  useSyncCategorias(categorias, setCategorias);
 
   const cargarDatos = async () => {
     setCargandoProductos(true);
@@ -242,7 +250,10 @@ const eliminarUsuario = async (id: number) => {
       <Navbar />
       <div className="contenido">
         <div className="encabezado">
-          <h1 className="encabezado-titulo">Control de Almacén</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "20px", flex: 1 }}>
+            <h1 className="encabezado-titulo">Control de Almacén</h1>
+            <SyncStatus />
+          </div>
           <div className="encabezado-acciones">
 
             <input
