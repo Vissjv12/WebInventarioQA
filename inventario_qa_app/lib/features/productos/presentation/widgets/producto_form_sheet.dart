@@ -127,9 +127,10 @@ class _ProductoFormSheetState extends State<_ProductoFormSheet> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.producto != null;
-    return Padding(
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
       child: SafeArea(
         child: Padding(
@@ -304,8 +305,8 @@ class _ImagePickerBox extends StatelessWidget {
                     ? CachedNetworkImage(
                         imageUrl: preview!,
                         fit: BoxFit.contain,
-                        height: 150,
-                      )
+                        height: 150,                        placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+                        errorWidget: (_, __, ___) => const Center(child: Text('📦', style: TextStyle(fontSize: 28))),                      )
                     : Image.file(File(preview!), fit: BoxFit.contain, height: 150),
               )
             : Column(

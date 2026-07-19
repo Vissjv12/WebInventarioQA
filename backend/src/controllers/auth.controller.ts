@@ -40,22 +40,37 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const register = async (req: Request, res: Response) => {
-  const { nombre, email, password } = req.body;
+  const nombreTrim = String(req.body.nombre ?? '').trim();
+  const emailTrim = String(req.body.email ?? '').trim().toLowerCase();
+  const passwordStr = String(req.body.password ?? '');
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!nombre || !email || !password) {
+  if (nombreTrim.length === 0 || emailTrim.length === 0 || passwordStr.length === 0) {
     return res.status(400).json({ error: "Todos los campos son requeridos" });
   }
 
-  const existe = await prisma.usuario.findUnique({ where: { email } });
+  if (nombreTrim.length < 3 || nombreTrim.length > 80) {
+    return res.status(400).json({ error: "El nombre debe tener entre 3 y 80 caracteres" });
+  }
+
+  if (!emailPattern.test(emailTrim)) {
+    return res.status(400).json({ error: "Email inválido" });
+  }
+
+  if (passwordStr.length < 6) {
+    return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
+  }
+
+  const existe = await prisma.usuario.findUnique({ where: { email: emailTrim } });
   if (existe) {
     return res.status(409).json({ error: "El email ya está registrado" });
   }
 
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await bcrypt.hash(passwordStr, 10);
 
   // Siempre CLIENTE, ignoramos el rol que venga del body
   const usuario = await prisma.usuario.create({
-    data: { nombre, email, password: hash, rol: "CLIENTE" },
+    data: { nombre: nombreTrim, email: emailTrim, password: hash, rol: "CLIENTE" },
   });
 
   return res.status(201).json({

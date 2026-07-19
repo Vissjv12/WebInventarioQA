@@ -24,21 +24,42 @@ export const obtenerProducto = async (req: Request, res: Response) => {
 export const crearProducto = async (req: Request, res: Response) => {
   try {
     const { nombre, precio, stock, descripcion, imagenUrl, categoriaId } = req.body;
+    const nombreTrim = String(nombre ?? '').trim();
+    const precioNum = Number(precio);
+    const stockNum = Number(stock);
+    const categoriaNum = Number(categoriaId);
 
-    if (!nombre || precio === undefined || stock === undefined || !categoriaId) {
+    if (nombreTrim.length === 0 || precio === undefined || stock === undefined || categoriaId === undefined) {
       return res.status(400).json({ error: "Nombre, precio, stock y categoría son requeridos" });
     }
 
-    if (precio < 0) return res.status(400).json({ error: "El precio no puede ser negativo" });
-    if (stock < 0) return res.status(400).json({ error: "El stock no puede ser negativo" });
+    if (nombreTrim.length < 3 || nombreTrim.length > 120) {
+      return res.status(400).json({ error: "El nombre debe tener entre 3 y 120 caracteres" });
+    }
+
+    if (Number.isNaN(precioNum) || precioNum < 0 || precioNum > 1000000) {
+      return res.status(400).json({ error: "Precio inválido" });
+    }
+
+    if (!Number.isInteger(stockNum) || stockNum < 0 || stockNum > 1000000) {
+      return res.status(400).json({ error: "Stock inválido" });
+    }
+
+    if (Number.isNaN(categoriaNum) || categoriaNum <= 0) {
+      return res.status(400).json({ error: "Categoría inválida" });
+    }
+
+    if (descripcion && String(descripcion).length > 1000) {
+      return res.status(400).json({ error: "La descripción no puede exceder los 1000 caracteres" });
+    }
 
     const producto = await ProductoService.crearProducto({
-      nombre,
-      precio,
-      stock,
-      descripcion,
-      imagenUrl,
-      categoriaId: Number(categoriaId),
+      nombre: nombreTrim,
+      precio: precioNum,
+      stock: stockNum,
+      descripcion: descripcion ? String(descripcion).trim() : undefined,
+      imagenUrl: imagenUrl ? String(imagenUrl).trim() : undefined,
+      categoriaId: categoriaNum,
       usuarioId: req.usuario!.id,
     });
 
@@ -58,19 +79,38 @@ export const crearProducto = async (req: Request, res: Response) => {
 export const actualizarProducto = async (req: Request, res: Response) => {
   try {
     const { nombre, precio, stock, descripcion, imagenUrl, categoriaId } = req.body;
+    const nombreTrim = nombre != null ? String(nombre).trim() : undefined;
+    const precioNum = precio != null ? Number(precio) : undefined;
+    const stockNum = stock != null ? Number(stock) : undefined;
+    const categoriaNum = categoriaId != null ? Number(categoriaId) : undefined;
 
-    if (precio !== undefined && precio < 0)
-      return res.status(400).json({ error: "El precio no puede ser negativo" });
-    if (stock !== undefined && stock < 0)
-      return res.status(400).json({ error: "El stock no puede ser negativo" });
+    if (nombreTrim != null && (nombreTrim.length === 0 || nombreTrim.length < 3 || nombreTrim.length > 120)) {
+      return res.status(400).json({ error: "El nombre debe tener entre 3 y 120 caracteres" });
+    }
+
+    if (precioNum != null && (Number.isNaN(precioNum) || precioNum < 0 || precioNum > 1000000)) {
+      return res.status(400).json({ error: "Precio inválido" });
+    }
+
+    if (stockNum != null && (!Number.isInteger(stockNum) || stockNum < 0 || stockNum > 1000000)) {
+      return res.status(400).json({ error: "Stock inválido" });
+    }
+
+    if (categoriaNum != null && (Number.isNaN(categoriaNum) || categoriaNum <= 0)) {
+      return res.status(400).json({ error: "Categoría inválida" });
+    }
+
+    if (descripcion != null && String(descripcion).length > 1000) {
+      return res.status(400).json({ error: "La descripción no puede exceder los 1000 caracteres" });
+    }
 
     const producto = await ProductoService.actualizarProducto(Number(req.params.id), {
-      nombre,
-      precio,
-      stock,
-      descripcion,
-      imagenUrl,
-      categoriaId: categoriaId ? Number(categoriaId) : undefined,
+      nombre: nombreTrim ?? undefined,
+      precio: precioNum ?? undefined,
+      stock: stockNum ?? undefined,
+      descripcion: descripcion != null ? String(descripcion).trim() : undefined,
+      imagenUrl: imagenUrl ? String(imagenUrl).trim() : undefined,
+      categoriaId: categoriaNum,
     });
 
     // ✅ EMIT: Notificar a todas las aplicaciones

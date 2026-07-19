@@ -44,13 +44,13 @@ export default function LoginPage() {
 }
 
 const styles = {
-  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#020617' },
-  card: { width: '100%', maxWidth: 430, padding: 32, borderRadius: 16, background: '#111827', boxShadow: '0 20px 50px rgba(0,0,0,0.35)' },
-  title: { margin: 0, color: '#f8fafc', textAlign: 'center' },
+  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'radial-gradient(circle at top left, #1e293b 0%, #020617 55%)' },
+  card: { width: '100%', maxWidth: 430, padding: 32, borderRadius: 20, background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(148, 163, 184, 0.18)', boxShadow: '0 16px 40px rgba(2, 6, 23, 0.28)' },
+  title: { margin: 0, color: '#f8fafc', textAlign: 'center', fontSize: '1.8rem' },
   subtitle: { color: '#94a3b8', textAlign: 'center', marginBottom: 24 },
   form: { display: 'flex', flexDirection: 'column', gap: 12 },
-  input: { padding: '12px 14px', borderRadius: 10, border: '1px solid #334155', background: '#0f172a', color: '#f8fafc' },
-  button: { padding: '12px 14px', borderRadius: 10, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' },
+  input: { padding: '12px 14px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#f8fafc' },
+  button: { padding: '12px 14px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)', color: 'white', cursor: 'pointer', fontWeight: 600 },
   error: { color: '#f87171', margin: 0, textAlign: 'center' },
   link: { color: '#94a3b8', textAlign: 'center', marginTop: 16 },
 } as const;

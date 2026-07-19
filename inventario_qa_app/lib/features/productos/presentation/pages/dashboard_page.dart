@@ -163,19 +163,19 @@ class _DashboardPageState extends State<DashboardPage> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth >= 600;
-                return Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Control de Almacén',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                if (isWide) {
+                  return Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Control de Almacén',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    if (isWide) ...[
                       SizedBox(
                         width: 200,
                         child: TextField(
@@ -209,41 +209,47 @@ class _DashboardPageState extends State<DashboardPage> {
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Nuevo'),
                       ),
-                    ] else ...[
-                      SizedBox(
-                        width: 140,
-                        child: TextField(
-                          onChanged: (v) {
-                            setState(() {
-                              _busqueda = v;
-                              _pagina = 1;
-                            });
-                          },
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            hintText: '🔍 Buscar...',
-                          ),
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-                        color: AppColors.surface,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(color: AppColors.border),
-                        ),
-                        onSelected: (v) {
-                          if (v == 'categorias') _abrirCategorias();
-                          if (v == 'usuarios') _abrirUsuarios();
-                          if (v == 'nuevo') _abrirFormulario(null);
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'categorias', child: Text('🏷️  Categorías')),
-                          PopupMenuItem(value: 'usuarios', child: Text('👥  Usuarios')),
-                          PopupMenuItem(value: 'nuevo', child: Text('➕  Nuevo')),
-                        ],
-                      ),
                     ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      onChanged: (v) {
+                        setState(() {
+                          _busqueda = v;
+                          _pagina = 1;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: '🔍 Buscar producto...',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _abrirCategorias,
+                          icon: const Text('🏷️'),
+                          label: const Text('Categorías'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _abrirUsuarios,
+                          icon: const Text('👥'),
+                          label: const Text('Usuarios'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _abrirFormulario(null),
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('Nuevo'),
+                        ),
+                      ],
+                    ),
                   ],
                 );
               },

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { io, Socket } from 'socket.io-client';
-import type { Categoria, Producto, Usuario } from '../types';
+import { io, type Socket } from 'socket.io-client';
+import type { Categoria, Producto } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardPage() {
@@ -10,9 +10,16 @@ export default function DashboardPage() {
   const { usuario, logout } = useAuth();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [formProducto, setFormProducto] = useState({ nombre: '', precio: '', stock: '', descripcion: '', categoriaId: '' });
-  const [formCategoria, setFormCategoria] = useState({ nombre: '', descripcion: '' });
+  const [busqueda, setBusqueda] = useState('');
   const [connected, setConnected] = useState(false);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
+  const [form, setForm] = useState({ nombre: '', precio: '', stock: '', descripcion: '', categoriaId: '' });
+  const [imagenPreview, setImagenPreview] = useState('');
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [modalCategoria, setModalCategoria] = useState(false);
+  const [nuevaCategoria, setNuevaCategoria] = useState('');
+  const [mensaje, setMensaje] = useState<string | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -38,120 +45,210 @@ export default function DashboardPage() {
     }
   };
 
-  const crearProducto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/productos', {
-        nombre: formProducto.nombre,
-        precio: Number(formProducto.precio),
-        stock: Number(formProducto.stock),
-        descripcion: formProducto.descripcion,
-        categoriaId: Number(formProducto.categoriaId),
-      });
-      setFormProducto({ nombre: '', precio: '', stock: '', descripcion: '', categoriaId: '' });
-    } catch (err) {
-      console.error(err);
+  const abrirModal = (producto?: Producto) => {
+    if (producto) {
+      setProductoEditando(producto);
+      setForm({ nombre: producto.nombre, precio: String(producto.precio), stock: String(producto.stock), descripcion: producto.descripcion || '', categoriaId: String(producto.categoriaId || '') });
+      setImagenPreview(producto.imagenUrl || '');
+    } else {
+      setProductoEditando(null);
+      setForm({ nombre: '', precio: '', stock: '', descripcion: '', categoriaId: '' });
+      setImagenPreview('');
     }
+    setImagenFile(null);
+    setModalAbierto(true);
   };
 
-  const crearCategoria = async (e: React.FormEvent) => {
+  const cerrarModal = () => setModalAbierto(false);
+
+  const guardarProducto = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/categorias', { nombre: formCategoria.nombre, descripcion: formCategoria.descripcion });
-      setFormCategoria({ nombre: '', descripcion: '' });
-    } catch (err) {
-      console.error(err);
+      let imagenUrl = productoEditando?.imagenUrl || '';
+      if (imagenFile) {
+        const uploadData = new FormData();
+        uploadData.append('imagen', imagenFile);
+        const uploadResponse = await api.post('/imagenes', uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        imagenUrl = uploadResponse.data.url;
+      }
+
+      const data = {
+        nombre: form.nombre,
+        precio: Number(form.precio),
+        stock: Number(form.stock),
+        descripcion: form.descripcion,
+        categoriaId: Number(form.categoriaId),
+        imagenUrl,
+      };
+
+      if (productoEditando) {
+        await api.put(`/productos/${productoEditando.id}`, data);
+      } else {
+        await api.post('/productos', data);
+      }
+      setMensaje(productoEditando ? 'Producto actualizado' : 'Producto creado');
+      setModalAbierto(false);
+      setImagenFile(null);
+      setImagenPreview('');
+      await cargarDatos();
+    } catch {
+      setMensaje('Error al guardar producto');
     }
   };
 
   const eliminarProducto = async (id: number) => {
     try {
       await api.delete(`/productos/${id}`);
-    } catch (err) {
-      console.error(err);
+      await cargarDatos();
+      setMensaje('Producto eliminado');
+    } catch {
+      setMensaje('No se pudo eliminar');
+    }
+  };
+
+  const crearCategoria = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/categorias', { nombre: nuevaCategoria });
+      setNuevaCategoria('');
+      setModalCategoria(false);
+      await cargarDatos();
+      setMensaje('Categoría creada');
+    } catch {
+      setMensaje('Error al crear categoría');
     }
   };
 
   const eliminarCategoria = async (id: number) => {
     try {
       await api.delete(`/categorias/${id}`);
-    } catch (err) {
-      console.error(err);
+      await cargarDatos();
+      setMensaje('Categoría eliminada');
+    } catch {
+      setMensaje('No se pudo eliminar la categoría');
     }
   };
 
+  const productosFiltrados = useMemo(() => productos.filter((p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase())), [productos, busqueda]);
+  const estadisticas = useMemo(() => ({ productos: productos.length, categorias: categorias.length }), [productos, categorias]);
+
   return (
     <div style={{ minHeight: '100vh', background: '#020617', color: '#f8fafc', padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div>
-          <h1 style={{ margin: 0 }}>Dashboard</h1>
-          <p style={{ margin: '4px 0 0', color: '#94a3b8' }}>Bienvenido {usuario?.nombre || 'admin'}</p>
+          <h1 style={{ margin: 0, fontSize: 28 }}>Panel de administración</h1>
+          <p style={{ margin: '6px 0 0', color: '#94a3b8' }}>Bienvenido {usuario?.nombre || 'admin'} · {connected ? '🟢 Sincronizado' : '🔴 Desconectado'}</p>
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{ color: connected ? '#4ade80' : '#f87171' }}>{connected ? '🟢 Sincronizado' : '🔴 Desconectado'}</span>
-          <button onClick={() => { logout(); navigate('/login'); }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1f2937', color: 'white', border: '1px solid #334155', cursor: 'pointer' }}>Cerrar sesión</button>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div style={cardStyle}>
-          <h3>Crear producto</h3>
-          <form onSubmit={crearProducto} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input placeholder="Nombre" value={formProducto.nombre} onChange={(e) => setFormProducto({ ...formProducto, nombre: e.target.value })} style={inputStyle} />
-            <input placeholder="Precio" type="number" value={formProducto.precio} onChange={(e) => setFormProducto({ ...formProducto, precio: e.target.value })} style={inputStyle} />
-            <input placeholder="Stock" type="number" value={formProducto.stock} onChange={(e) => setFormProducto({ ...formProducto, stock: e.target.value })} style={inputStyle} />
-            <input placeholder="Descripción" value={formProducto.descripcion} onChange={(e) => setFormProducto({ ...formProducto, descripcion: e.target.value })} style={inputStyle} />
-            <select value={formProducto.categoriaId} onChange={(e) => setFormProducto({ ...formProducto, categoriaId: e.target.value })} style={inputStyle}>
-              <option value="">Selecciona categoría</option>
-              {categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-            <button type="submit" style={buttonStyle}>Crear producto</button>
-          </form>
-        </div>
-
-        <div style={cardStyle}>
-          <h3>Crear categoría</h3>
-          <form onSubmit={crearCategoria} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input placeholder="Nombre" value={formCategoria.nombre} onChange={(e) => setFormCategoria({ ...formCategoria, nombre: e.target.value })} style={inputStyle} />
-            <input placeholder="Descripción" value={formCategoria.descripcion} onChange={(e) => setFormCategoria({ ...formCategoria, descripcion: e.target.value })} style={inputStyle} />
-            <button type="submit" style={buttonStyle}>Crear categoría</button>
-          </form>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setModalCategoria(true)} style={buttonPrimary}>+ Nueva categoría</button>
+          <button onClick={() => abrirModal()} style={buttonPrimary}>+ Nuevo producto</button>
+          <button onClick={() => { logout(); navigate('/login'); }} style={buttonSecondary}>Cerrar sesión</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 20 }}>
+        <div style={cardStyle}><strong>{estadisticas.productos}</strong> productos</div>
+        <div style={cardStyle}><strong>{estadisticas.categorias}</strong> categorías</div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+        <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar producto" style={inputStyle} />
+      </div>
+
+      {mensaje && <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: 10, marginBottom: 16 }}>{mensaje}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
         <div style={cardStyle}>
-          <h3>Productos</h3>
-          {productos.map((producto) => (
-            <div key={producto.id} style={{ background: '#111827', padding: 12, borderRadius: 10, marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <h3 style={{ marginTop: 0 }}>Productos</h3>
+          {productosFiltrados.map((producto) => (
+            <div key={producto.id} style={{ background: '#111827', borderRadius: 12, padding: 14, marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <strong>{producto.nombre}</strong>
-                <button onClick={() => eliminarProducto(producto.id)} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 8, cursor: 'pointer' }}>Eliminar</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => abrirModal(producto)} style={buttonSecondary}>Editar</button>
+                  <button onClick={() => eliminarProducto(producto.id)} style={buttonDanger}>Eliminar</button>
+                </div>
               </div>
-              <div>Precio: ${producto.precio}</div>
-              <div>Stock: {producto.stock}</div>
-              <div>Categoría: {producto.categoriaNombre || 'Sin categoría'}</div>
+              <div style={{ color: '#94a3b8', marginTop: 6 }}>Precio: ${producto.precio}</div>
+              <div style={{ color: '#94a3b8' }}>Stock: {producto.stock}</div>
+              <div style={{ color: '#94a3b8' }}>Categoría: {producto.categoriaNombre || 'Sin categoría'}</div>
             </div>
           ))}
         </div>
 
         <div style={cardStyle}>
-          <h3>Categorías</h3>
+          <h3 style={{ marginTop: 0 }}>Categorías</h3>
           {categorias.map((categoria) => (
-            <div key={categoria.id} style={{ background: '#111827', padding: 12, borderRadius: 10, marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div key={categoria.id} style={{ background: '#111827', borderRadius: 12, padding: 12, marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
                 <strong>{categoria.nombre}</strong>
-                <button onClick={() => eliminarCategoria(categoria.id)} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 8, cursor: 'pointer' }}>Eliminar</button>
+                <div style={{ color: '#94a3b8' }}>{categoria.descripcion || 'Sin descripción'}</div>
               </div>
-              <div>{categoria.descripcion || 'Sin descripción'}</div>
+              <button onClick={() => eliminarCategoria(categoria.id)} style={buttonDanger}>Eliminar</button>
             </div>
           ))}
         </div>
       </div>
+
+      {modalAbierto && (
+        <div style={modalBackdrop}>
+          <div style={modalCard}>
+            <h3>{productoEditando ? 'Editar producto' : 'Nuevo producto'}</h3>
+            <form onSubmit={guardarProducto} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} style={inputStyle} required />
+              <input placeholder="Precio" type="number" value={form.precio} onChange={(e) => setForm({ ...form, precio: e.target.value })} style={inputStyle} required />
+              <input placeholder="Stock" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} style={inputStyle} required />
+              <input placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} style={inputStyle} />
+              <label style={{ color: '#94a3b8', fontSize: 0.9 }}>Imagen del producto</label>
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImagenFile(file);
+                  setImagenPreview(URL.createObjectURL(file));
+                }
+              }} style={inputStyle} />
+              {imagenPreview && (
+                <div style={{ marginTop: 8, borderRadius: 12, overflow: 'hidden', background: '#0f172a' }}>
+                  <img src={imagenPreview} alt="Previsualización" style={{ width: '100%', display: 'block' }} />
+                </div>
+              )}
+              <select value={form.categoriaId} onChange={(e) => setForm({ ...form, categoriaId: e.target.value })} style={inputStyle} required>
+                <option value="">Selecciona categoría</option>
+                {categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" onClick={cerrarModal} style={buttonSecondary}>Cancelar</button>
+                <button type="submit" style={buttonPrimary}>Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modalCategoria && (
+        <div style={modalBackdrop}>
+          <div style={modalCard}>
+            <h3>Nueva categoría</h3>
+            <form onSubmit={crearCategoria} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input placeholder="Nombre de categoría" value={nuevaCategoria} onChange={(e) => setNuevaCategoria(e.target.value)} style={inputStyle} required />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" onClick={() => setModalCategoria(false)} style={buttonSecondary}>Cancelar</button>
+                <button type="submit" style={buttonPrimary}>Crear</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-const cardStyle = { background: '#111827', padding: 20, borderRadius: 16, border: '1px solid #334155' } as const;
-const inputStyle = { padding: '10px 12px', borderRadius: 10, background: '#0f172a', color: '#f8fafc', border: '1px solid #334155' } as const;
-const buttonStyle = { padding: '10px 12px', borderRadius: 10, background: '#2563eb', color: 'white', border: 'none', cursor: 'pointer' } as const;
+const cardStyle = { background: '#111827', borderRadius: 16, padding: 18, border: '1px solid #334155' } as const;
+const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: 10, background: '#0f172a', color: '#f8fafc', border: '1px solid #334155' } as const;
+const buttonPrimary = { padding: '10px 12px', borderRadius: 10, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' } as const;
+const buttonSecondary = { padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#1f2937', color: 'white', cursor: 'pointer' } as const;
+const buttonDanger = { padding: '10px 12px', borderRadius: 10, border: 'none', background: '#dc2626', color: 'white', cursor: 'pointer' } as const;
+const modalBackdrop = { position: 'fixed' as const, inset: 0, background: 'rgba(2,6,23,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 } as const;
+const modalCard = { width: '100%', maxWidth: 480, background: '#111827', borderRadius: 16, padding: 24, border: '1px solid #334155' } as const;

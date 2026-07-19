@@ -68,7 +68,7 @@ export default function DetalleProducto() {
 
         <div className="detalle-card">
           <div className="detalle-imagen">
-            {producto.imagenUrl
+            {producto.imagenUrl && producto.imagenUrl.trim() !== ''
               ? <img src={producto.imagenUrl} alt={producto.nombre} />
               : <span style={{ fontSize: "4rem" }}>📦</span>
             }

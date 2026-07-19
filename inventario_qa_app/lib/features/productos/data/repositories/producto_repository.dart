@@ -40,7 +40,7 @@ class ProductoRepository {
         'stock': stock,
         'descripcion': descripcion,
         'categoriaId': categoriaId,
-        'imagenUrl': ?imagenUrl,
+        'imagenUrl': imagenUrl,
       }),
     );
     return Producto.fromJson(data);
@@ -62,7 +62,7 @@ class ProductoRepository {
         'stock': stock,
         'descripcion': descripcion,
         'categoriaId': categoriaId,
-        'imagenUrl': ?imagenUrl,
+        'imagenUrl': imagenUrl,
       }),
     );
     return Producto.fromJson(data);
