@@ -178,11 +178,18 @@ class _ProductoFormSheetState extends State<_ProductoFormSheet> {
                   const SizedBox(height: 12),
                   FormBuilderTextField(
                     name: 'nombre',
+                    maxLength: 120,
                     decoration: const InputDecoration(
                       labelText: 'Nombre *',
                       prefixIcon: Icon(Icons.inventory_2_outlined),
+                      helperText: '3–120 caracteres',
+                      counterText: '',
                     ),
-                    validator: FormBuilderValidators.required(),
+                    validator: FormBuilderValidators.compose([
+                      FormBuilderValidators.required(errorText: 'El nombre es requerido'),
+                      FormBuilderValidators.minLength(3, errorText: 'Mínimo 3 caracteres'),
+                      FormBuilderValidators.maxLength(120, errorText: 'Máximo 120 caracteres'),
+                    ]),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -196,9 +203,10 @@ class _ProductoFormSheetState extends State<_ProductoFormSheet> {
                             prefixIcon: Icon(Icons.attach_money),
                           ),
                           validator: FormBuilderValidators.compose([
-                            FormBuilderValidators.required(),
-                            FormBuilderValidators.numeric(),
-                            FormBuilderValidators.min(0),
+                            FormBuilderValidators.required(errorText: 'Requerido'),
+                            FormBuilderValidators.numeric(errorText: 'Solo números'),
+                            FormBuilderValidators.min(0, errorText: '≥ 0'),
+                            FormBuilderValidators.max(1000000, errorText: 'Máx. \$1,000,000'),
                           ]),
                         ),
                       ),
@@ -212,9 +220,10 @@ class _ProductoFormSheetState extends State<_ProductoFormSheet> {
                             prefixIcon: Icon(Icons.numbers),
                           ),
                           validator: FormBuilderValidators.compose([
-                            FormBuilderValidators.required(),
-                            FormBuilderValidators.integer(),
-                            FormBuilderValidators.min(0),
+                            FormBuilderValidators.required(errorText: 'Requerido'),
+                            FormBuilderValidators.integer(errorText: 'Entero'),
+                            FormBuilderValidators.min(0, errorText: '≥ 0'),
+                            FormBuilderValidators.max(1000000, errorText: 'Máx. 1,000,000'),
                           ]),
                         ),
                       ),
@@ -239,9 +248,12 @@ class _ProductoFormSheetState extends State<_ProductoFormSheet> {
                   FormBuilderTextField(
                     name: 'descripcion',
                     maxLines: 3,
+                    maxLength: 1000,
                     decoration: const InputDecoration(
                       labelText: 'Descripción',
                       alignLabelWithHint: true,
+                      helperText: 'Opcional — máx. 1,000 caracteres',
+                      counterStyle: TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   ),
                   const SizedBox(height: 12),

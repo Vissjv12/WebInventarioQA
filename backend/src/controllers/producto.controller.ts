@@ -63,14 +63,17 @@ export const crearProducto = async (req: Request, res: Response) => {
       usuarioId: req.usuario!.id,
     });
 
+    // Obtener producto completo con categoria para el emit
+    const productoCompleto = await ProductoService.obtenerProductoPorId(producto.id);
+
     // ✅ EMIT: Notificar a todas las aplicaciones
     await emitirActualizacionProducto(
       "PRODUCTO_CREADO",
-      producto,
+      productoCompleto ?? producto,
       req.usuario!.id
     );
 
-    res.status(201).json(producto);
+    res.status(201).json(productoCompleto ?? producto);
   } catch {
     res.status(500).json({ error: "Error al crear producto" });
   }
@@ -113,14 +116,17 @@ export const actualizarProducto = async (req: Request, res: Response) => {
       categoriaId: categoriaNum,
     });
 
+    // Obtener producto completo con categoria para el emit
+    const productoCompleto = await ProductoService.obtenerProductoPorId(producto.id);
+
     // ✅ EMIT: Notificar a todas las aplicaciones
     await emitirActualizacionProducto(
       "PRODUCTO_ACTUALIZADO",
-      producto,
+      productoCompleto ?? producto,
       req.usuario!.id
     );
 
-    res.json(producto);
+    res.json(productoCompleto ?? producto);
   } catch {
     res.status(500).json({ error: "Error al actualizar producto" });
   }

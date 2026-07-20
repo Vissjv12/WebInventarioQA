@@ -3,14 +3,26 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../prisma";
 
-export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const nombrePattern = /^[\p{L}\s'-]{2,80}$/u;
 
-  if (!email || !password) {
+export const login = async (req: Request, res: Response) => {
+  const emailRaw = String(req.body.email ?? '').trim().toLowerCase();
+  const password = String(req.body.password ?? '');
+
+  if (!emailRaw || !password) {
     return res.status(400).json({ error: "Email y contraseña son requeridos" });
   }
 
-  const usuario = await prisma.usuario.findUnique({ where: { email } });
+  if (!emailPattern.test(emailRaw)) {
+    return res.status(400).json({ error: "El formato del email no es válido" });
+  }
+
+  if (password.length < 6 || password.length > 100) {
+    return res.status(400).json({ error: "Contraseña inválida" });
+  }
+
+  const usuario = await prisma.usuario.findUnique({ where: { email: emailRaw } });
 
   if (!usuario) {
     return res.status(401).json({ error: "Credenciales incorrectas" });
@@ -43,7 +55,6 @@ export const register = async (req: Request, res: Response) => {
   const nombreTrim = String(req.body.nombre ?? '').trim();
   const emailTrim = String(req.body.email ?? '').trim().toLowerCase();
   const passwordStr = String(req.body.password ?? '');
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (nombreTrim.length === 0 || emailTrim.length === 0 || passwordStr.length === 0) {
     return res.status(400).json({ error: "Todos los campos son requeridos" });
@@ -53,12 +64,24 @@ export const register = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "El nombre debe tener entre 3 y 80 caracteres" });
   }
 
+  if (!nombrePattern.test(nombreTrim)) {
+    return res.status(400).json({ error: "El nombre solo puede contener letras, espacios, guiones y apóstrofes" });
+  }
+
   if (!emailPattern.test(emailTrim)) {
-    return res.status(400).json({ error: "Email inválido" });
+    return res.status(400).json({ error: "El formato del email no es válido" });
+  }
+
+  if (emailTrim.length > 254) {
+    return res.status(400).json({ error: "El email es demasiado largo" });
   }
 
   if (passwordStr.length < 6) {
     return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
+  }
+
+  if (passwordStr.length > 100) {
+    return res.status(400).json({ error: "La contraseña no puede superar los 100 caracteres" });
   }
 
   const existe = await prisma.usuario.findUnique({ where: { email: emailTrim } });

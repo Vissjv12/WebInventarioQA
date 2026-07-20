@@ -6,7 +6,15 @@ export const uploadImagen = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No se envió ninguna imagen" });
     }
 
-    const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    // Validar tipo MIME
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: "Tipo de imagen no permitido. Use JPG, PNG o WEBP." });
+    }
+
+    // Usar BASE_URL del entorno para que sea accesible desde dispositivos móviles en la red local
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const url = `${baseUrl}/uploads/${req.file.filename}`;
     return res.json({ url });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || "Error al subir imagen" });

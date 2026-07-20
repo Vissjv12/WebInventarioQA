@@ -165,15 +165,26 @@ class _ProductoCard extends StatelessWidget {
               height: 80,
               color: AppColors.surfaceAlt,
               alignment: Alignment.center,
-              child: producto.imagenUrl != null
+              child: producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: producto.imagenUrl!,
                       fit: BoxFit.cover,
                       width: double.infinity,
-                      errorWidget: (_, _, _) =>
-                          const Text('📦', style: TextStyle(fontSize: 24)),
+                      height: double.infinity,
+                      placeholder: (_, __) => const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) =>
+                          const Center(child: Text('📦', style: TextStyle(fontSize: 28))),
                     )
-                  : const Text('📦', style: TextStyle(fontSize: 24)),
+                  : const Center(child: Text('📦', style: TextStyle(fontSize: 28))),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),

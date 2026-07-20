@@ -110,15 +110,24 @@ class _DetallePageState extends State<DetallePage> {
                   height: 180,
                   color: AppColors.surfaceAlt,
                   alignment: Alignment.center,
-                  child: p.imagenUrl != null
+                  child: p.imagenUrl != null && p.imagenUrl!.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: p.imagenUrl!,
                           fit: BoxFit.contain,
                           width: double.infinity,
-                          errorWidget: (_, _, _) =>
+                          height: double.infinity,
+                          placeholder: (_, __) => const Center(
+                            child: SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) =>
                               const Text('📦', style: TextStyle(fontSize: 48)),
                         )
                       : const Text('📦', style: TextStyle(fontSize: 48)),
+
                 ),
                 Padding(
                   padding: const EdgeInsets.all(20),

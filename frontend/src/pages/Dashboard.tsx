@@ -115,14 +115,28 @@ export default function Dashboard() {
   };
 
   const guardar = async () => {
-
     setError("");
-    if (!form.nombre || !form.precio || !form.stock || !form.categoriaId) {
-      setError("Todos los campos obligatorios deben completarse");
-      return;
-    }
-    if (Number(form.precio) < 0) { setError("El precio no puede ser negativo"); return; }
-    if (Number(form.stock) < 0) { setError("El stock no puede ser negativo"); return; }
+
+    // Validaciones extendidas
+    const nombreTrim = form.nombre.trim();
+    const precioNum = Number(form.precio);
+    const stockNum = Number(form.stock);
+
+    if (!nombreTrim) { setError("El nombre es requerido"); return; }
+    if (nombreTrim.length < 3) { setError("El nombre debe tener al menos 3 caracteres"); return; }
+    if (nombreTrim.length > 120) { setError("El nombre no puede superar 120 caracteres"); return; }
+
+    if (!form.precio) { setError("El precio es requerido"); return; }
+    if (isNaN(precioNum) || precioNum < 0) { setError("El precio debe ser un número mayor o igual a 0"); return; }
+    if (precioNum > 1_000_000) { setError("El precio no puede superar $1,000,000"); return; }
+
+    if (!form.stock) { setError("El stock es requerido"); return; }
+    if (!Number.isInteger(stockNum) || stockNum < 0) { setError("El stock debe ser un número entero ≥ 0"); return; }
+    if (stockNum > 1_000_000) { setError("El stock no puede superar 1,000,000"); return; }
+
+    if (!form.categoriaId) { setError("Selecciona una categoría"); return; }
+
+    if (form.descripcion.length > 1000) { setError("La descripción no puede superar 1,000 caracteres"); return; }
 
     setCargando(true);
     try {
@@ -139,10 +153,10 @@ export default function Dashboard() {
       }
 
       const data = {
-        nombre: form.nombre,
-        precio: Number(form.precio),
-        stock: Number(form.stock),
-        descripcion: form.descripcion,
+        nombre: nombreTrim,
+        precio: precioNum,
+        stock: stockNum,
+        descripcion: form.descripcion.trim(),
         categoriaId: Number(form.categoriaId),
         imagenUrl,
       };
@@ -162,6 +176,7 @@ export default function Dashboard() {
       setCargando(false);
     }
   };
+
 
   const eliminar = async (id: number) => {
     setConfirm({

@@ -155,6 +155,13 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const AppNavbar(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _abrirFormulario(null),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.textPrimary,
+        icon: const Icon(Icons.add),
+        label: const Text('Nuevo'),
+      ),
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(
@@ -194,13 +201,13 @@ class _DashboardPageState extends State<DashboardPage> {
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: _abrirCategorias,
-                        icon: const Text('🏷️'),
+                        icon: const Icon(Icons.label_outline, size: 16),
                         label: const Text('Categorías'),
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: _abrirUsuarios,
-                        icon: const Text('👥'),
+                        icon: const Icon(Icons.people_outline, size: 16),
                         label: const Text('Usuarios'),
                       ),
                       const SizedBox(width: 8),
@@ -213,9 +220,19 @@ class _DashboardPageState extends State<DashboardPage> {
                   );
                 }
 
+                // Layout móvil: botones directamente visibles
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const Text(
+                      'Control de Almacén',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     TextField(
                       onChanged: (v) {
                         setState(() {
@@ -226,29 +243,34 @@ class _DashboardPageState extends State<DashboardPage> {
                       decoration: const InputDecoration(
                         isDense: true,
                         hintText: '🔍 Buscar producto...',
+                        prefixIcon: Icon(Icons.search, size: 18),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _abrirCategorias,
-                          icon: const Text('🏷️'),
-                          label: const Text('Categorías'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _abrirUsuarios,
-                          icon: const Text('👥'),
-                          label: const Text('Usuarios'),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () => _abrirFormulario(null),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Nuevo'),
-                        ),
-                      ],
+                    const SizedBox(height: 10),
+                    // Botones visibles directamente — scroll horizontal
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: _abrirCategorias,
+                            icon: const Icon(Icons.label_outline, size: 16),
+                            label: const Text('Categorías'),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _abrirUsuarios,
+                            icon: const Icon(Icons.people_outline, size: 16),
+                            label: const Text('Usuarios'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => _abrirFormulario(null),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Nuevo producto'),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 );
@@ -337,15 +359,26 @@ class _ProductoAdminCard extends StatelessWidget {
             height: 80,
             color: AppColors.surfaceAlt,
             alignment: Alignment.center,
-            child: producto.imagenUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: producto.imagenUrl!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    errorWidget: (_, _, _) =>
-                        const Text('📦', style: TextStyle(fontSize: 24)),
-                  )
-                : const Text('📦', style: TextStyle(fontSize: 24)),
+            child: producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: producto.imagenUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  placeholder: (_, __) => const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) =>
+                      const Center(child: Text('📦', style: TextStyle(fontSize: 28))),
+                )
+              : const Center(child: Text('📦', style: TextStyle(fontSize: 28))),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),

@@ -64,6 +64,10 @@ export const emitirActualizacionProducto = async (
         descripcion: producto.descripcion,
         imagenUrl: producto.imagenUrl,
         categoriaId: producto.categoriaId,
+        // Incluir objeto categoria completo para que los clientes puedan mostrar el nombre
+        categoria: producto.categoria
+          ? { id: producto.categoria.id, nombre: producto.categoria.nombre }
+          : { id: producto.categoriaId, nombre: '' },
         creadoEn: producto.creadoEn,
         actualizadoEn: producto.actualizadoEn,
       },
@@ -71,6 +75,7 @@ export const emitirActualizacionProducto = async (
     usuarioId
   );
 };
+
 
 /**
  * Emite una notificación específica para actualización de categorías

@@ -46,7 +46,7 @@ class Producto {
       precio: _toDouble(json['precio']),
       stock: (json['stock'] as num).toInt(),
       descripcion: json['descripcion'] as String?,
-      imagenUrl: json['imagenUrl'] as String?,
+      imagenUrl: _normalizarUrlImagen(json['imagenUrl'] as String?),
       creadoEn: json['creadoEn'] != null
           ? DateTime.tryParse(json['creadoEn'] as String)
           : null,
@@ -66,4 +66,15 @@ double _toDouble(dynamic v) {
   if (v is num) return v.toDouble();
   if (v is String) return double.tryParse(v) ?? 0.0;
   return 0.0;
+}
+
+/// Normaliza la URL de imagen reemplazando "localhost" por la IP real del servidor.
+/// Esto permite que las imágenes subidas desde la web (que generan URLs con localhost)
+/// sean accesibles desde el dispositivo móvil en la red local.
+String? _normalizarUrlImagen(String? url) {
+  if (url == null || url.isEmpty) return null;
+  // Reemplaza localhost por la IP del servidor para que el móvil pueda cargar la imagen
+  return url
+      .replaceAll('http://localhost:3000', 'http://192.168.18.8:3000')
+      .replaceAll('https://localhost:3000', 'http://192.168.18.8:3000');
 }
