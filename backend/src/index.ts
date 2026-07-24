@@ -16,6 +16,19 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
+// Orígenes permitidos: se leen de CORS_ORIGINS (separados por coma) y siempre
+// se acepta localhost en cualquier puerto para desarrollo/Electron/Flutter Web.
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+function isOriginAllowed(origin: string): boolean {
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
+  return false;
+}
+
 // Socket.IO con CORS
 const io = new SocketServer(httpServer, {
   cors: {
@@ -32,20 +45,10 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Permite herramientas como Postman
+      // Permite herramientas como Postman (sin header Origin)
       if (!origin) return callback(null, true);
 
-      // React
-      if (origin === "http://localhost:5173")
-        return callback(null, true);
-
-      // Electron
-      if (origin === "http://localhost:3001")
-        return callback(null, true);
-
-      // Flutter Web (cualquier puerto localhost)
-      if (/^http:\/\/localhost:\d+$/.test(origin))
-        return callback(null, true);
+      if (isOriginAllowed(origin)) return callback(null, true);
 
       callback(new Error("No permitido por CORS"));
     },
