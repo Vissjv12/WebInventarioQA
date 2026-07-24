@@ -24,8 +24,13 @@ export const crearCategoria = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "El nombre debe tener entre 2 y 60 caracteres" });
     }
 
-    if (descripcionTrim && descripcionTrim.length > 500) {
-      return res.status(400).json({ error: "La descripción no puede exceder los 500 caracteres" });
+    if (descripcionTrim) {
+      if (descripcionTrim.length > 500) {
+        return res.status(400).json({ error: "La descripción no puede exceder los 500 caracteres" });
+      }
+      if (/[<>&"';\\]/.test(descripcionTrim)) {
+        return res.status(400).json({ error: "La descripción contiene caracteres no permitidos (<, >, &, \", ', ;, \\)" });
+      }
     }
 
     const categoria = await prisma.categoria.create({

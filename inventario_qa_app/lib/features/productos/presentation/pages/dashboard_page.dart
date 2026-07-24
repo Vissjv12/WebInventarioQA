@@ -33,6 +33,20 @@ class _DashboardPageState extends State<DashboardPage> {
   int _pagina = 1;
   static const int _porPagina = 8;
 
+  // ── Filtros ──────────────────────────────────────────
+  String _filtroCategoria = '';
+  String _ordenPrecio = ''; // '' | 'asc' | 'desc'
+  String _filtroStock = '';  // '' | 'disponible' | 'sinstock'
+  double? _precioMin;
+  double? _precioMax;
+  bool _panelFiltros = false;
+
+  List<String> get _categoriasDisponibles {
+    final names = _productos.map((p) => p.categoria.nombre).toSet().toList();
+    names.sort();
+    return names;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -141,9 +155,29 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filtrados = _productos
-        .where((p) => p.nombre.toLowerCase().contains(_busqueda.toLowerCase()))
-        .toList();
+    // Filtrado completo
+    List<Producto> filtrados = _productos.where((p) {
+      final okNombre   = p.nombre.toLowerCase().contains(_busqueda.toLowerCase());
+      final okCategoria = _filtroCategoria.isEmpty || p.categoria.nombre == _filtroCategoria;
+      final okStock    = _filtroStock == 'disponible'
+          ? p.stock > 0
+          : _filtroStock == 'sinstock'
+              ? p.stock == 0
+              : true;
+      final okMin = _precioMin == null || p.precio >= _precioMin!;
+      final okMax = _precioMax == null || p.precio <= _precioMax!;
+      return okNombre && okCategoria && okStock && okMin && okMax;
+    }).toList();
+
+    if (_ordenPrecio == 'asc')  filtrados.sort((a, b) => a.precio.compareTo(b.precio));
+    if (_ordenPrecio == 'desc') filtrados.sort((a, b) => b.precio.compareTo(a.precio));
+
+    final filtrosActivos = [_filtroCategoria, _ordenPrecio, _filtroStock]
+        .where((v) => v.isNotEmpty)
+        .length +
+        (_precioMin != null ? 1 : 0) +
+        (_precioMax != null ? 1 : 0);
+
     final totalPaginas = (filtrados.length / _porPagina).ceil().clamp(1, 999);
     final inicio = (_pagina - 1) * _porPagina;
     final fin = inicio + _porPagina;
@@ -170,6 +204,41 @@ class _DashboardPageState extends State<DashboardPage> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth >= 600;
+                
+                // Botón de filtros con badge
+                final btnFiltros = Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => setState(() => _panelFiltros = !_panelFiltros),
+                      icon: const Icon(Icons.tune, size: 16),
+                      label: const Text('Filtros'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: filtrosActivos > 0 ? AppColors.primary : null,
+                        side: filtrosActivos > 0
+                            ? const BorderSide(color: AppColors.primary)
+                            : null,
+                      ),
+                    ),
+                    if (filtrosActivos > 0)
+                      Positioned(
+                        top: -6,
+                        right: -6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$filtrosActivos',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+
                 if (isWide) {
                   return Row(
                     children: [
@@ -184,7 +253,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                       SizedBox(
-                        width: 200,
+                        width: 160,
                         child: TextField(
                           onChanged: (v) {
                             setState(() {
@@ -194,10 +263,12 @@ class _DashboardPageState extends State<DashboardPage> {
                           },
                           decoration: const InputDecoration(
                             isDense: true,
-                            hintText: '🔍 Buscar producto...',
+                            hintText: '🔍 Buscar...',
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      btnFiltros,
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: _abrirCategorias,
@@ -233,18 +304,25 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    TextField(
-                      onChanged: (v) {
-                        setState(() {
-                          _busqueda = v;
-                          _pagina = 1;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        hintText: '🔍 Buscar producto...',
-                        prefixIcon: Icon(Icons.search, size: 18),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            onChanged: (v) {
+                              setState(() {
+                                _busqueda = v;
+                                _pagina = 1;
+                              });
+                            },
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              hintText: '🔍 Buscar producto...',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        btnFiltros,
+                      ],
                     ),
                     const SizedBox(height: 10),
                     // Botones visibles directamente — scroll horizontal
@@ -276,6 +354,122 @@ class _DashboardPageState extends State<DashboardPage> {
                 );
               },
             ),
+
+            // ── Panel de filtros colapsable ──
+            if (_panelFiltros) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Categoría
+                    Text('Categoría', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: _filtroCategoria.isEmpty ? null : _filtroCategoria,
+                      decoration: const InputDecoration(isDense: true, hintText: 'Todas las categorías'),
+                      items: [
+                        const DropdownMenuItem(value: '', child: Text('Todas')),
+                        ..._categoriasDisponibles.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                      ],
+                      onChanged: (v) => setState(() { _filtroCategoria = v ?? ''; _pagina = 1; }),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Orden precio
+                    Text('Ordenar por precio', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: _ordenPrecio.isEmpty ? null : _ordenPrecio,
+                      decoration: const InputDecoration(isDense: true, hintText: 'Sin orden'),
+                      items: const [
+                        DropdownMenuItem(value: '', child: Text('Sin orden')),
+                        DropdownMenuItem(value: 'asc', child: Text('Precio: Menor a mayor')),
+                        DropdownMenuItem(value: 'desc', child: Text('Precio: Mayor a menor')),
+                      ],
+                      onChanged: (v) => setState(() { _ordenPrecio = v ?? ''; _pagina = 1; }),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Rango precio
+                    Text('Rango de precio (\$)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(isDense: true, hintText: 'Mín'),
+                            onChanged: (v) => setState(() { _precioMin = double.tryParse(v); _pagina = 1; }),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('–', style: TextStyle(color: AppColors.textMuted)),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(isDense: true, hintText: 'Máx'),
+                            onChanged: (v) => setState(() { _precioMax = double.tryParse(v); _pagina = 1; }),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Disponibilidad
+                    Text('Disponibilidad', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: _filtroStock.isEmpty ? null : _filtroStock,
+                      decoration: const InputDecoration(isDense: true, hintText: 'Todos'),
+                      items: const [
+                        DropdownMenuItem(value: '', child: Text('Todos')),
+                        DropdownMenuItem(value: 'disponible', child: Text('Con stock')),
+                        DropdownMenuItem(value: 'sinstock', child: Text('Sin stock')),
+                      ],
+                      onChanged: (v) => setState(() { _filtroStock = v ?? ''; _pagina = 1; }),
+                    ),
+
+                    if (filtrosActivos > 0) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() {
+                          _filtroCategoria = '';
+                          _ordenPrecio = '';
+                          _filtroStock = '';
+                          _precioMin = null;
+                          _precioMax = null;
+                          _busqueda = '';
+                          _pagina = 1;
+                        }),
+                        icon: const Icon(Icons.clear, size: 16, color: Colors.redAccent),
+                        label: const Text('Limpiar filtros', style: TextStyle(color: Colors.redAccent)),
+                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.redAccent)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            // Contador de resultados
+            if (_busqueda.isNotEmpty || filtrosActivos > 0) ...[
+              const SizedBox(height: 10),
+              Text(
+                filtrados.isEmpty
+                    ? 'Sin resultados con los filtros aplicados.'
+                    : '${filtrados.length} producto${filtrados.length != 1 ? "s" : ""} encontrado${filtrados.length != 1 ? "s" : ""}',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              ),
+            ],
             const SizedBox(height: 20),
             if (_cargandoProductos)
               const AppSpinner()

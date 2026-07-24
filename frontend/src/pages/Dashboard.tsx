@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
@@ -8,6 +8,9 @@ import Toast from "../components/Toast";
 import ModalConfirm from "../components/ModalConfirm";
 import { useSyncProductos, useSyncCategorias } from "../hooks/useSync";
 import SyncStatus from "../components/SyncStatus";
+
+type OrdenPrecio = "" | "asc" | "desc";
+type FiltroStock = "" | "disponible" | "sinstock";
 
 interface Producto {
   id: number;
@@ -29,7 +32,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -49,6 +51,15 @@ export default function Dashboard() {
   const [modalUsuarios, setModalUsuarios] = useState(false);
   const [usuarios, setUsuarios] = useState<{id: number; nombre: string; email: string; rol: string}[]>([]);
   const [confirm, setConfirm] = useState<{ mensaje: string; accion: () => void } | null>(null);
+
+  // ── Filtros ───────────────────────────────────────────
+  const [busqueda, setBusqueda]         = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [ordenPrecio, setOrdenPrecio]   = useState<OrdenPrecio>("");
+  const [filtroStock, setFiltroStock]   = useState<FiltroStock>("");
+  const [precioMin, setPrecioMin]       = useState<string>("");
+  const [precioMax, setPrecioMax]       = useState<string>("");
+  const [filtrosVisible, setFiltrosVisible] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -195,9 +206,40 @@ export default function Dashboard() {
     });
   };
 
-  const productosFiltrados = productos.filter(p =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const filtrosActivos = [filtroCategoria, ordenPrecio, filtroStock, precioMin, precioMax]
+    .filter(Boolean).length;
+
+  const limpiarFiltros = () => {
+    setBusqueda("");
+    setFiltroCategoria("");
+    setOrdenPrecio("");
+    setFiltroStock("");
+    setPrecioMin("");
+    setPrecioMax("");
+    setPagina(1);
+  };
+
+  const cambiarFiltro = (fn: () => void) => { fn(); setPagina(1); };
+
+  const productosFiltrados = useMemo(() => {
+    const min = precioMin !== "" ? Number(precioMin) : null;
+    const max = precioMax !== "" ? Number(precioMax) : null;
+
+    let lista = productos.filter(p => {
+      const coincideNombre     = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
+      const coincideCategoria  = filtroCategoria ? p.categoria.id === Number(filtroCategoria) : true;
+      const coincideStock =
+        filtroStock === "disponible" ? p.stock > 0 :
+        filtroStock === "sinstock"   ? p.stock === 0 : true;
+      const coincidePrecioMin  = min !== null ? Number(p.precio) >= min : true;
+      const coincidePrecioMax  = max !== null ? Number(p.precio) <= max : true;
+      return coincideNombre && coincideCategoria && coincideStock && coincidePrecioMin && coincidePrecioMax;
+    });
+
+    if (ordenPrecio === "asc")  lista = [...lista].sort((a, b) => Number(a.precio) - Number(b.precio));
+    if (ordenPrecio === "desc") lista = [...lista].sort((a, b) => Number(b.precio) - Number(a.precio));
+    return lista;
+  }, [productos, busqueda, filtroCategoria, ordenPrecio, filtroStock, precioMin, precioMax]);
 
   const crearCategoria = async () => {
     if (!nuevaCategoria.trim()) {
@@ -264,50 +306,63 @@ const eliminarUsuario = async (id: number) => {
     <div style={{ minHeight: "100vh", backgroundColor: "#0F172A" }}>
       <Navbar />
       <div className="contenido">
+
+        {/* ── Encabezado ─────────────────────────────────── */}
         <div className="encabezado">
           <div style={{ display: "flex", alignItems: "center", gap: "20px", flex: 1 }}>
             <h1 className="encabezado-titulo">Control de Almacén</h1>
             <SyncStatus />
           </div>
           <div className="encabezado-acciones">
-
             <input
               type="text"
               placeholder="🔍 Buscar producto..."
               value={busqueda}
-              onChange={(e) => {
-                setBusqueda(e.target.value);
-                setPagina(1);
-              }}
+              onChange={e => cambiarFiltro(() => setBusqueda(e.target.value))}
               className="buscador"
             />
+            <button
+              onClick={() => setFiltrosVisible(v => !v)}
+              style={{
+                padding: "0.6rem 1rem",
+                borderRadius: "8px",
+                border: `1px solid ${filtrosActivos > 0 ? "#2563EB" : "#334155"}`,
+                backgroundColor: filtrosActivos > 0 ? "#1E3A5F" : "transparent",
+                color: filtrosActivos > 0 ? "#60A5FA" : "#94A3B8",
+                cursor: "pointer",
+                fontWeight: "bold",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              ⚙️ Filtros
+              {filtrosActivos > 0 && (
+                <span style={{
+                  background: "#2563EB", color: "#fff", borderRadius: "999px",
+                  fontSize: "0.7rem", padding: "1px 7px", fontWeight: "bold",
+                }}>
+                  {filtrosActivos}
+                </span>
+              )}
+            </button>
             {isAdmin() && (
               <>
                 <button onClick={() => setModalCategorias(true)} style={{
-                  padding: "0.6rem 1.2rem",
-                  borderRadius: "8px",
-                  border: "1px solid #334155",
-                  backgroundColor: "transparent",
-                  color: "#94A3B8",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  whiteSpace: "nowrap",
+                  padding: "0.6rem 1.2rem", borderRadius: "8px",
+                  border: "1px solid #334155", backgroundColor: "transparent",
+                  color: "#94A3B8", cursor: "pointer", fontWeight: "bold", whiteSpace: "nowrap",
                 }}>
                   🏷️ Categorías
                 </button>
                 <button onClick={() => abrirModal()} className="boton-agregar">
                   + Nuevo Producto
                 </button>
-
                 <button onClick={() => setModalUsuarios(true)} style={{
-                  padding: "0.6rem 1.2rem",
-                  borderRadius: "8px",
-                  border: "1px solid #334155",
-                  backgroundColor: "transparent",
-                  color: "#94A3B8",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  whiteSpace: "nowrap",
+                  padding: "0.6rem 1.2rem", borderRadius: "8px",
+                  border: "1px solid #334155", backgroundColor: "transparent",
+                  color: "#94A3B8", cursor: "pointer", fontWeight: "bold", whiteSpace: "nowrap",
                 }}>
                   👥 Usuarios
                 </button>
@@ -315,6 +370,102 @@ const eliminarUsuario = async (id: number) => {
             )}
           </div>
         </div>
+
+        {/* ── Panel de filtros ────────────────────────────── */}
+        {filtrosVisible && (
+          <div style={{
+            background: "#1E293B", border: "1px solid #334155",
+            borderRadius: "12px", padding: "1.25rem 1.5rem",
+            marginBottom: "1.5rem", display: "flex",
+            flexWrap: "wrap", gap: "1rem", alignItems: "flex-end",
+          }}>
+
+            {/* Categoría */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: "160px" }}>
+              <label style={{ color: "#94A3B8", fontSize: "0.8rem" }}>Categoría</label>
+              <select
+                value={filtroCategoria}
+                onChange={e => cambiarFiltro(() => setFiltroCategoria(e.target.value))}
+                className="input" style={{ padding: "0.5rem 0.75rem" }}
+              >
+                <option value="">Todas las categorías</option>
+                {categorias.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Orden precio */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: "180px" }}>
+              <label style={{ color: "#94A3B8", fontSize: "0.8rem" }}>Ordenar por precio</label>
+              <select
+                value={ordenPrecio}
+                onChange={e => cambiarFiltro(() => setOrdenPrecio(e.target.value as OrdenPrecio))}
+                className="input" style={{ padding: "0.5rem 0.75rem" }}
+              >
+                <option value="">Sin orden</option>
+                <option value="asc">Precio: Menor a mayor</option>
+                <option value="desc">Precio: Mayor a menor</option>
+              </select>
+            </div>
+
+            {/* Rango de precio */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: "200px" }}>
+              <label style={{ color: "#94A3B8", fontSize: "0.8rem" }}>Rango de precio ($)</label>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <input
+                  type="number" placeholder="Mín" min={0} value={precioMin}
+                  onChange={e => cambiarFiltro(() => setPrecioMin(e.target.value))}
+                  className="input" style={{ padding: "0.5rem 0.6rem", width: "90px" }}
+                />
+                <span style={{ color: "#64748B" }}>–</span>
+                <input
+                  type="number" placeholder="Máx" min={0} value={precioMax}
+                  onChange={e => cambiarFiltro(() => setPrecioMax(e.target.value))}
+                  className="input" style={{ padding: "0.5rem 0.6rem", width: "90px" }}
+                />
+              </div>
+            </div>
+
+            {/* Stock */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", minWidth: "160px" }}>
+              <label style={{ color: "#94A3B8", fontSize: "0.8rem" }}>Disponibilidad</label>
+              <select
+                value={filtroStock}
+                onChange={e => cambiarFiltro(() => setFiltroStock(e.target.value as FiltroStock))}
+                className="input" style={{ padding: "0.5rem 0.75rem" }}
+              >
+                <option value="">Todos</option>
+                <option value="disponible">Con stock</option>
+                <option value="sinstock">Sin stock</option>
+              </select>
+            </div>
+
+            {/* Limpiar */}
+            {filtrosActivos > 0 && (
+              <button
+                onClick={limpiarFiltros}
+                style={{
+                  padding: "0.5rem 1rem", borderRadius: "8px",
+                  border: "1px solid #EF4444", background: "transparent",
+                  color: "#EF4444", cursor: "pointer",
+                  fontSize: "0.85rem", whiteSpace: "nowrap", alignSelf: "flex-end",
+                }}
+              >
+                ✕ Limpiar filtros
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Contador de resultados */}
+        {(busqueda || filtrosActivos > 0) && (
+          <p style={{ color: "#64748B", fontSize: "0.85rem", marginBottom: "1rem" }}>
+            {productosFiltrados.length === 0
+              ? "No se encontraron productos con los filtros aplicados."
+              : `Mostrando ${productosFiltrados.length} producto${productosFiltrados.length !== 1 ? "s" : ""}`}
+          </p>
+        )}
 
         <div className="grid-productos">
           {cargandoProductos ? (

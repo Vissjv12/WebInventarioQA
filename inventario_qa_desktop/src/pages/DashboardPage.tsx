@@ -5,6 +5,9 @@ import { io, type Socket } from 'socket.io-client';
 import type { Categoria, Producto } from '../types';
 import { useAuth } from '../context/AuthContext';
 
+type OrdenPrecio = '' | 'asc' | 'desc';
+type FiltroStock  = '' | 'disponible' | 'sinstock';
+
 /// Normaliza un producto recibido por socket o REST para que siempre tenga categoriaNombre
 function normalizarProducto(p: any): Producto {
   return {
@@ -75,6 +78,14 @@ export default function DashboardPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [connected, setConnected] = useState(false);
+
+  // ── Filtros ────────────────────────────────────────────
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [ordenPrecio, setOrdenPrecio] = useState<OrdenPrecio>('');
+  const [filtroStock, setFiltroStock] = useState<FiltroStock>('');
+  const [precioMin, setPrecioMin] = useState('');
+  const [precioMax, setPrecioMax] = useState('');
+  const [panelVisible, setPanelVisible] = useState(false);
 
   // Producto modal
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -257,10 +268,25 @@ export default function DashboardPage() {
     });
   };
 
-  const productosFiltrados = useMemo(
-    () => productos.filter((p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase())),
-    [productos, busqueda]
-  );
+  const filtrosActivos = [filtroCategoria, ordenPrecio, filtroStock, precioMin, precioMax].filter(Boolean).length;
+
+  const limpiarFiltros = () => { setBusqueda(''); setFiltroCategoria(''); setOrdenPrecio(''); setFiltroStock(''); setPrecioMin(''); setPrecioMax(''); };
+
+  const productosFiltrados = useMemo(() => {
+    const min = precioMin !== '' ? Number(precioMin) : null;
+    const max = precioMax !== '' ? Number(precioMax) : null;
+    let lista = productos.filter(p => {
+      const ok1 = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
+      const ok2 = filtroCategoria ? p.categoriaId === Number(filtroCategoria) : true;
+      const ok3 = filtroStock === 'disponible' ? p.stock! > 0 : filtroStock === 'sinstock' ? p.stock === 0 : true;
+      const ok4 = min !== null ? Number(p.precio) >= min : true;
+      const ok5 = max !== null ? Number(p.precio) <= max : true;
+      return ok1 && ok2 && ok3 && ok4 && ok5;
+    });
+    if (ordenPrecio === 'asc')  lista = [...lista].sort((a, b) => Number(a.precio) - Number(b.precio));
+    if (ordenPrecio === 'desc') lista = [...lista].sort((a, b) => Number(b.precio) - Number(a.precio));
+    return lista;
+  }, [productos, busqueda, filtroCategoria, ordenPrecio, filtroStock, precioMin, precioMax]);
 
   const estadisticas = useMemo(
     () => ({ productos: productos.length, categorias: categorias.length }),
@@ -309,13 +335,78 @@ export default function DashboardPage() {
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="🔍 Buscar producto..."
             className="input-field"
-            style={{ maxWidth: 220 }}
+            style={{ maxWidth: 200 }}
           />
+          <button
+            onClick={() => setPanelVisible(v => !v)}
+            className="secondary-btn"
+            style={{ position: 'relative', borderColor: filtrosActivos > 0 ? '#2563eb' : undefined, color: filtrosActivos > 0 ? '#60a5fa' : undefined }}
+          >
+            ⚙️ Filtros{filtrosActivos > 0 && (
+              <span style={{ marginLeft: 6, background: '#2563eb', color: '#fff', borderRadius: '999px', fontSize: '0.7rem', padding: '1px 7px', fontWeight: 700 }}>
+                {filtrosActivos}
+              </span>
+            )}
+          </button>
           <button onClick={() => setModalCategoria(true)} className="secondary-btn">🏷️ Categorías</button>
           <button onClick={() => abrirModal()} className="primary-btn">+ Nuevo producto</button>
           <button onClick={() => { logout(); navigate('/login'); }} className="secondary-btn">Salir</button>
         </div>
       </div>
+
+      {/* Panel filtros */}
+      {panelVisible && (
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 150 }}>
+            <label style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Categoría</label>
+            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className="input-field" style={{ padding: '6px 10px' }}>
+              <option value="">Todas</option>
+              {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 170 }}>
+            <label style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Ordenar por precio</label>
+            <select value={ordenPrecio} onChange={e => setOrdenPrecio(e.target.value as OrdenPrecio)} className="input-field" style={{ padding: '6px 10px' }}>
+              <option value="">Sin orden</option>
+              <option value="asc">Menor a mayor</option>
+              <option value="desc">Mayor a menor</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Precio ($)</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input type="number" placeholder="Mín" min={0} value={precioMin} onChange={e => setPrecioMin(e.target.value)} className="input-field" style={{ width: 80, padding: '6px 8px' }} />
+              <span style={{ color: '#475569' }}>–</span>
+              <input type="number" placeholder="Máx" min={0} value={precioMax} onChange={e => setPrecioMax(e.target.value)} className="input-field" style={{ width: 80, padding: '6px 8px' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140 }}>
+            <label style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Disponibilidad</label>
+            <select value={filtroStock} onChange={e => setFiltroStock(e.target.value as FiltroStock)} className="input-field" style={{ padding: '6px 10px' }}>
+              <option value="">Todos</option>
+              <option value="disponible">Con stock</option>
+              <option value="sinstock">Sin stock</option>
+            </select>
+          </div>
+
+          {filtrosActivos > 0 && (
+            <button onClick={limpiarFiltros} className="secondary-btn" style={{ alignSelf: 'flex-end', borderColor: '#ef4444', color: '#ef4444' }}>
+              ✕ Limpiar
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Contador */}
+      {(busqueda || filtrosActivos > 0) && (
+        <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: 14 }}>
+          {productosFiltrados.length === 0 ? 'Sin resultados.' : `${productosFiltrados.length} producto${productosFiltrados.length !== 1 ? 's' : ''}`}
+        </p>
+      )}
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>

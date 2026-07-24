@@ -49,8 +49,14 @@ export const crearProducto = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Categoría inválida" });
     }
 
-    if (descripcion && String(descripcion).length > 1000) {
-      return res.status(400).json({ error: "La descripción no puede exceder los 1000 caracteres" });
+    if (descripcion) {
+      const descStr = String(descripcion);
+      if (descStr.length > 1000) {
+        return res.status(400).json({ error: "La descripción no puede exceder los 1000 caracteres" });
+      }
+      if (/[<>&"';\\]/.test(descStr)) {
+        return res.status(400).json({ error: "La descripción contiene caracteres no permitidos (<, >, &, \", ', ;, \\)" });
+      }
     }
 
     const producto = await ProductoService.crearProducto({
@@ -103,8 +109,14 @@ export const actualizarProducto = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Categoría inválida" });
     }
 
-    if (descripcion != null && String(descripcion).length > 1000) {
-      return res.status(400).json({ error: "La descripción no puede exceder los 1000 caracteres" });
+    if (descripcion != null) {
+      const descStr = String(descripcion);
+      if (descStr.length > 1000) {
+        return res.status(400).json({ error: "La descripción no puede exceder los 1000 caracteres" });
+      }
+      if (/[<>&"';\\]/.test(descStr)) {
+        return res.status(400).json({ error: "La descripción contiene caracteres no permitidos (<, >, &, \", ', ;, \\)" });
+      }
     }
 
     const producto = await ProductoService.actualizarProducto(Number(req.params.id), {
