@@ -4,19 +4,7 @@ import Navbar from "../components/Navbar";
 import Spinner from "../components/Spinner";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-
-interface Producto {
-  id: number;
-  nombre: string;
-  precio: number;
-  stock: number;
-  descripcion?: string;
-  imagenUrl?: string;
-  creadoEn: string;
-  actualizadoEn: string;
-  categoria: { id: number; nombre: string };
-  creadoPor: { nombre: string };
-}
+import type { Producto } from "../hooks/useSync";
 
 export default function DetalleProducto() {
   const { id } = useParams();

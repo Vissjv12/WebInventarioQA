@@ -12,6 +12,11 @@ import {
   offCategoriaEliminada,
 } from "../services/socket.service";
 
+export interface Categoria {
+  id: number;
+  nombre: string;
+}
+
 export interface Producto {
   id: number;
   nombre: string;
@@ -20,8 +25,10 @@ export interface Producto {
   descripcion?: string;
   imagenUrl?: string;
   categoriaId: number;
+  categoria: Categoria;
   creadoEn: string;
   actualizadoEn: string;
+  creadoPor: { nombre: string };
 }
 
 /**
@@ -88,8 +95,8 @@ export function useSyncProductos(
  */
 
 export function useSyncCategorias(
-  categorias: { id: number; nombre: string }[],
-  setCategorias: (categorias: { id: number; nombre: string }[]) => void
+  categorias: Categoria[],
+  setCategorias: (categorias: Categoria[]) => void
 ) {
 
   const handleCategoriaCreada = useCallback(

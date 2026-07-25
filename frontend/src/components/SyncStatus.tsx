@@ -26,10 +26,6 @@ export default function SyncStatus() {
           borderRadius: "50%",
           backgroundColor: "white",
           animation: isConnected ? "pulse 2s infinite" : "none",
-          "@keyframes pulse": {
-            "0%, 100%": { opacity: 1 },
-            "50%": { opacity: 0.5 },
-          },
         }}
       />
       <span>{isConnected ? "Sincronizado" : "Desconectado"}</span>

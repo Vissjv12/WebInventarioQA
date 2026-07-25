@@ -3,18 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Spinner from "../components/Spinner";
 import api from "../services/api";
-import { useSyncProductos } from "../hooks/useSync";
+import { useSyncProductos, type Producto } from "../hooks/useSync";
 import SyncStatus from "../components/SyncStatus";
-
-interface Producto {
-  id: number;
-  nombre: string;
-  precio: number;
-  stock: number;
-  descripcion?: string;
-  imagenUrl?: string;
-  categoria: { id: number; nombre: string };
-}
 
 type OrdenPrecio = "" | "asc" | "desc";
 type FiltroStock = "" | "disponible" | "sinstock";

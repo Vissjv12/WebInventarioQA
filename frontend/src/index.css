@@ -9,6 +9,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .navbar {
   background-color: #1E293B;
   padding: 0 1.5rem;

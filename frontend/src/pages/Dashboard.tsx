@@ -6,26 +6,11 @@ import api from "../services/api";
 import Spinner from "../components/Spinner";
 import Toast from "../components/Toast";
 import ModalConfirm from "../components/ModalConfirm";
-import { useSyncProductos, useSyncCategorias } from "../hooks/useSync";
+import { useSyncProductos, useSyncCategorias, type Producto, type Categoria } from "../hooks/useSync";
 import SyncStatus from "../components/SyncStatus";
 
 type OrdenPrecio = "" | "asc" | "desc";
 type FiltroStock = "" | "disponible" | "sinstock";
-
-interface Producto {
-  id: number;
-  nombre: string;
-  precio: number;
-  stock: number;
-  descripcion?: string;
-  imagenUrl?: string;
-  categoria: { id: number; nombre: string };
-}
-
-interface Categoria {
-  id: number;
-  nombre: string;
-}
 
 export default function Dashboard() {
   const { isAdmin } = useAuth();
