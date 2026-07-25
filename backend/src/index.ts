@@ -14,8 +14,8 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
-const PORT = process.env.PORT || 3000;
-
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "127.0.0.1";
 // Orígenes permitidos: se leen de CORS_ORIGINS (separados por coma) y siempre
 // se acepta localhost en cualquier puerto para desarrollo/Electron/Flutter Web.
 const allowedOrigins = (process.env.CORS_ORIGINS || "")
@@ -89,7 +89,7 @@ io.on("connection", (socket) => {
   });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`[Express] Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`[Socket.IO] WebSocket disponible en ws://localhost:${PORT}`);
+httpServer.listen(PORT, HOST, () => {
+  console.log(`[Express] Servidor corriendo en http://${HOST}:${PORT}`);
+  console.log(`[Socket.IO] WebSocket disponible en ws://${HOST}:${PORT}`);
 });
